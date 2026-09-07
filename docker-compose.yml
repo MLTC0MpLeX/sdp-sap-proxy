@@ -1,0 +1,14 @@
+services:
+  sdp-sap-proxy:
+    build: .
+    container_name: sdp-sap-proxy
+    network_mode: host
+    restart: unless-stopped
+    environment:
+      SAP_GROUP: 224.2.127.254
+      SAP_PORT: 9875
+      SAP_INTERVAL: 30
+      SAP_TTL: 255
+      # Recommended on a multi-homed host: set this to the local IPv4 address
+      # of the NIC/subinterface on your AES67 media VLAN.
+      SAP_INTERFACE: 172.20.20.244

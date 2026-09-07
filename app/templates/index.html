@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SDP → SAP Proxy</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>SDP → SAP Proxy</h1>
+        <p>Advertise AES67/RTP sessions described by SDP to SAP-only receivers.</p>
+      </div>
+      <div class="status">SAP {{ sap_group }}:{{ sap_port }} · every {{ sap_interval }}s · interface {{ sap_interface }}</div>
+    </header>
+
+    <section class="card">
+      <h2>Add SDP announcement</h2>
+      <form action="/upload" method="post" enctype="multipart/form-data">
+        <label>Display name <input type="text" name="name" placeholder="Artist Program 1"></label>
+        <label>Upload .sdp <input type="file" name="sdp_file" accept=".sdp,text/plain"></label>
+        <div class="or">or paste SDP</div>
+        <textarea name="sdp_text" rows="12" placeholder="v=0&#10;o=- 1234 1 IN IP4 10.0.0.10&#10;s=Artist Stream&#10;c=IN IP4 239.10.10.10/32&#10;t=0 0&#10;m=audio 5004 RTP/AVP 96&#10;a=rtpmap:96 L24/48000/2"></textarea>
+        <button type="submit">Add and start advertising</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Active sessions</h2>
+      {% if announcements %}
+      <div class="sessions">
+        {% for a in announcements %}
+        <article class="session">
+          <div class="session-head">
+            <div>
+              <h3>{{ a.name }}</h3>
+              <span class="pill {{ 'on' if a.enabled else 'off' }}">{{ 'Advertising' if a.enabled else 'Paused' }}</span>
+            </div>
+            <div class="actions">
+              <form action="/announce/{{ a.id }}" method="post"><button class="secondary">Announce now</button></form>
+              <form action="/toggle/{{ a.id }}" method="post"><button class="secondary">{{ 'Pause' if a.enabled else 'Resume' }}</button></form>
+              <form action="/delete/{{ a.id }}" method="post"><button class="danger">Delete</button></form>
+            </div>
+          </div>
+          <pre>{{ a.sdp }}</pre>
+          <small>
+            {% if a.last_sent %}Last SAP send: {{ a.last_sent | int }}{% else %}Not sent yet{% endif %}
+            {% if a.last_error %} · Error: {{ a.last_error }}{% endif %}
+          </small>
+        </article>
+        {% endfor %}
+      </div>
+      {% else %}
+        <p>No SDP sessions configured yet.</p>
+      {% endif %}
+    </section>
+  </main>
+</body>
+</html>

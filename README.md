@@ -95,3 +95,28 @@ For production interoperability, keep the SDP exported by Artist intact rather t
 - SAP deletion packets are not emitted when a session is deleted/paused.
 
 These are deliberately kept out of v0.1 so the initial proxy is small and easy to test on an AES67 VLAN.
+
+## Persistent SDP entries
+
+Announcements are stored in `/data/announcements.json`. The supplied Docker Compose file mounts a named volume called `sdp-sap-data` at `/data`, so uploaded/pasted sessions and their enabled/disabled state survive container restarts and container recreation.
+
+Normal restart/rebuild (data retained):
+
+```bash
+docker compose down
+docker compose up -d --build
+```
+
+Inspect the persistent volume:
+
+```bash
+docker volume ls | grep sdp-sap-data
+```
+
+To intentionally erase all saved announcements, remove the volume as well:
+
+```bash
+docker compose down -v
+```
+
+Do not use `-v` during ordinary upgrades if you want to keep your SDP entries.

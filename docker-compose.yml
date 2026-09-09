@@ -9,6 +9,12 @@ services:
       SAP_PORT: 9875
       SAP_INTERVAL: 30
       SAP_TTL: 255
+      DATA_DIR: /data
       # Recommended on a multi-homed host: set this to the local IPv4 address
       # of the NIC/subinterface on your AES67 media VLAN.
-      SAP_INTERFACE: 172.20.20.244
+      # SAP_INTERFACE: 172.16.102.10
+    volumes:
+      - sdp-sap-data:/data
+
+volumes:
+  sdp-sap-data:

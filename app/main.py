@@ -2,6 +2,7 @@ import asyncio
 import base64
 import hashlib
 import ipaddress
+import json
 import os
 import socket
 import struct
@@ -20,6 +21,8 @@ SAP_PORT = int(os.getenv('SAP_PORT', '9875'))
 SAP_INTERVAL = float(os.getenv('SAP_INTERVAL', '30'))
 SAP_TTL = int(os.getenv('SAP_TTL', '255'))
 SAP_INTERFACE = os.getenv('SAP_INTERFACE', '')
+DATA_DIR = os.getenv('DATA_DIR', '/data')
+DATA_FILE = os.path.join(DATA_DIR, 'announcements.json')
 
 app = FastAPI(title='SDP to SAP Proxy')
 app.mount('/static', StaticFiles(directory='app/static'), name='static')
@@ -37,6 +40,48 @@ class Announcement:
 
 announcements: Dict[str, Announcement] = {}
 _task: Optional[asyncio.Task] = None
+
+
+
+def _save_announcements() -> None:
+    os.makedirs(DATA_DIR, exist_ok=True)
+    tmp_file = DATA_FILE + '.tmp'
+    payload = [
+        {
+            'id': ann.id,
+            'name': ann.name,
+            'sdp': ann.sdp,
+            'enabled': ann.enabled,
+            'created_at': ann.created_at,
+        }
+        for ann in announcements.values()
+    ]
+    with open(tmp_file, 'w', encoding='utf-8') as fh:
+        json.dump(payload, fh, ensure_ascii=False, indent=2)
+        fh.flush()
+        os.fsync(fh.fileno())
+    os.replace(tmp_file, DATA_FILE)
+
+
+def _load_announcements() -> None:
+    announcements.clear()
+    if not os.path.exists(DATA_FILE):
+        return
+    try:
+        with open(DATA_FILE, 'r', encoding='utf-8') as fh:
+            payload = json.load(fh)
+        for item in payload:
+            ann = Announcement(
+                id=str(item['id']),
+                name=str(item['name']),
+                sdp=str(item['sdp']),
+                enabled=bool(item.get('enabled', True)),
+                created_at=float(item.get('created_at', time.time())),
+            )
+            _validate_sdp(ann.sdp)
+            announcements[ann.id] = ann
+    except Exception as exc:
+        print(f'WARNING: Could not load {DATA_FILE}: {exc}', flush=True)
 
 
 def _origin_ip_from_sdp(sdp: str) -> str:
@@ -116,6 +161,7 @@ async def _announce_loop():
 @app.on_event('startup')
 async def startup_event():
     global _task
+    _load_announcements()
     _task = asyncio.create_task(_announce_loop())
 
 
@@ -157,6 +203,7 @@ async def upload_sdp(name: str = Form(''), sdp_text: str = Form(''), sdp_file: U
         enabled=True,
         created_at=time.time(),
     )
+    _save_announcements()
     return RedirectResponse('/', status_code=303)
 
 
@@ -181,6 +228,7 @@ async def toggle(ann_id: str):
     if not ann:
         raise HTTPException(404, 'Announcement not found')
     ann.enabled = not ann.enabled
+    _save_announcements()
     return RedirectResponse('/', status_code=303)
 
 
@@ -189,6 +237,7 @@ async def delete(ann_id: str):
     if ann_id not in announcements:
         raise HTTPException(404, 'Announcement not found')
     announcements.pop(ann_id)
+    _save_announcements()
     return RedirectResponse('/', status_code=303)
 
 

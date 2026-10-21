@@ -1,18 +1,18 @@
 services:
   sdp-sap-proxy:
-    build: .
+    image: ghcr.io/mltc0mplex/sdp-sap-proxy:latest
     container_name: sdp-sap-proxy
-    network_mode: host
     restart: unless-stopped
+
+    ports:
+      - "8000:8000"
+
     environment:
       SAP_GROUP: 224.2.127.254
       SAP_PORT: 9875
       SAP_INTERVAL: 30
       SAP_TTL: 255
-      DATA_DIR: /data
-      # Recommended on a multi-homed host: set this to the local IPv4 address
-      # of the NIC/subinterface on your AES67 media VLAN.
-      # SAP_INTERFACE: 172.16.102.10
+
     volumes:
       - sdp-sap-data:/data
 
